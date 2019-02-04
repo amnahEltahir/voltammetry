@@ -6,5 +6,4 @@ from .abfConvert import Vgramdata
 from .LabelData import Mulabels
 
 
-
 sys.path.append(os.path.join(os.path.dirname(__file__)))

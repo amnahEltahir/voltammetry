@@ -10,7 +10,7 @@ def H_calcStepStats(chemIx, predictions, labels):
     nChems = np.shape(labels)[1]
     # Initialize stats structure
     stats = recordclass('stats', 'labels, predRmse, predSnr, predSnre, mean, sd, n, sem')
-    np.seterr(divide='ignore', invalid='ignore')  # SNR and SNRE calculationsdivide by 0
+    np.seterr(divide='ignore', invalid='ignore')  # SNR and SNRE calculations divide by 0
     # initialize variables for calculating stats
     signal = np.squeeze(predictions, axis=2)
     truth = np.array(labels)
@@ -18,17 +18,17 @@ def H_calcStepStats(chemIx, predictions, labels):
     estimate = np.empty(signal.shape)
     noiseEst = np.empty(signal.shape)
     stats.labels = np.empty((nSteps, nChems))
-    stats.predRmse = np.empty((nSteps, nChems))
-    stats.predSnr = np.empty((nSteps, nChems))
-    stats.predSnre = np.empty((nSteps, nChems))
+    stats.prediction_RMSE = np.empty((nSteps, nChems))
+    stats.prediction_SNR = np.empty((nSteps, nChems))
+    stats.prediction_SNRE = np.empty((nSteps, nChems))
     stats.mean = np.empty((nSteps, nChems))
     stats.sd = np.empty((nSteps, nChems))
     stats.n = np.empty((nSteps, nChems))
     stats.sem = np.empty((nSteps, nChems))
 
-    stats.fullRmse = np.empty((nChems))
-    stats.fullSnr = np.empty((nChems))
-    stats.fullSnre = np.empty((nChems))
+    stats.fullRmse = np.empty(nChems)
+    stats.fullSnr = np.empty(nChems)
+    stats.fullSnre = np.empty(nChems)
     # Calculate stats for each step
     for ix in range(nSteps):
         selectIx = np.where(labels[chemIx] == muList[ix])
@@ -39,9 +39,9 @@ def H_calcStepStats(chemIx, predictions, labels):
         ssNoiseEst = (noiseEst[selectIx, :] ** 2).sum(axis=1)  # sum square noise Estimate
         stats.labels[ix, :] = truth[selectIx[0][0], :]
 
-        stats.predRmse[ix, :] = np.sqrt(np.square(noise[selectIx, :]).mean(axis=1))
-        stats.predSnr[ix, :] = 10 * np.log10((ssSig - ssNoise) / ssNoise)  # formula for SNR
-        stats.predSnre[ix, :] = 10 * np.log10((ssSig - ssNoiseEst) / ssNoiseEst)
+        stats.prediction_RMSE[ix, :] = np.sqrt(np.square(noise[selectIx, :]).mean(axis=1))
+        stats.prediction_SNR[ix, :] = 10 * np.log10((ssSig - ssNoise) / ssNoise)  # formula for SNR
+        stats.prediction_SNRE[ix, :] = 10 * np.log10((ssSig - ssNoiseEst) / ssNoiseEst)
         stats.mean[ix, :] = np.mean(signal[selectIx, :])
         stats.sd[ix, :] = np.std(signal[selectIx, :])
         stats.n[ix, :] = np.size(signal[selectIx, :])
@@ -54,17 +54,10 @@ def H_calcStepStats(chemIx, predictions, labels):
         stats.fullSnr = 10 * np.log10((ssSignal - ssNoise) / ssNoise)
         stats.fullSnre = 10 * np.log10((ssSignal - ssNoiseEst) / ssNoiseEst)
         np.seterr(divide=None, invalid=None)  # revert to warning for division by 0
-    return (stats)
+    return stats
 
 
-def H_plotCalibration3(time, predictions, labels, targetAnalyte, chemIx, chems, muRange, stats):
-    muList = np.unique(labels[chemIx])
-    nChems = 1
-
-    # format colors here
-    #
-    rows = 3
-    cols = nChems * 2
+def H_plotCalibration3(time, predictions, labels, targetAnalyte, chemIx, stats):
     X = time
     Y = predictions
     L = np.array(labels)
@@ -112,24 +105,20 @@ def H_plotCalibration3(time, predictions, labels, targetAnalyte, chemIx, chems, 
     y = stats.predRmse[:, chemIx]
     x = stats.labels[:, chemIx]
     ax2.scatter(x, y, color=labColor)
-    # for chemIx in range(nChems):
     ax2.plot(plt.xlim(), [stats.fullRmse[chemIx], stats.fullRmse[chemIx]], linestyle='--', markersize=1,
              color=labColor)
-
     plt.title('RMSE')
     plt.xlabel(muLabel)
     plt.ylabel(''.join(['RMSE', units]))
     plt.grid()
     plt.axis('tight')
+
     # Plot SNR
     ax3 = plt.subplot(gs[5:7, 3:5])
     y = stats.predSnr[:, chemIx]
     x = stats.labels[:, chemIx]
     ax3.scatter(x, y, color=labColor)
-
-    # for chemIx in range(nChems):
     ax3.plot(plt.xlim(), [stats.fullSnr[chemIx], stats.fullSnr[chemIx]], linestyle='--', markersize=1, color=labColor)
-
     plt.title('SNR')
     plt.xlabel(muLabel)
     plt.ylabel('SNR (dB)')

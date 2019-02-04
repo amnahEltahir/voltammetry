@@ -4,9 +4,11 @@ import pyabf
 import numpy as np
 import csv
 import matplotlib.pyplot as plt
-import matplotlib.colors as colors
 import matplotlib.cm as cmx
 import shutil
+
+from numpy.core.multiarray import ndarray
+
 
 class Vgramdata:
     """
@@ -27,10 +29,6 @@ class Vgramdata:
             y = (fnY(vgrams[mid, :]))
             x = range(len(y))
             plt.plot(x, y, color=CMAP(float(i / N)))
-        norm = colors.Normalize(vmin=1, vmax=N)
-        sm = cmx.ScalarMappable(cmap=CMAP, norm=norm)
-
-        cbar = plt.colorbar(sm, ticks=np.linspace(1, N, N), label='experiment #')
         plt.title('voltammograms')
         plt.xlabel('sample #')
         plt.ylabel('current (nA)')
@@ -38,6 +36,7 @@ class Vgramdata:
         plt.show()
 
 
+# noinspection PyProtectedMember
 def loadABF(abfpath):
     """Convert directory of ABF files to numpy arrays."""
     stTime = []
@@ -47,7 +46,6 @@ def loadABF(abfpath):
     for abfFile in glob.glob(abfpath + "/*.abf"):
         abf = pyabf.ABF(abfFile)
         abfh = abf._headerV2
-        numSamples = abf.sweepPointCount
         stTime.append(abfh.uFileStartTimeMS)
         CMD_step = []
         Voltammogram_step = []
@@ -63,9 +61,9 @@ def loadABF(abfpath):
     return [Voltammogram, CMD, stTime]
 
 
-def saveABF(abfpath, overwrite=False):
+def save_ABF(abf_path, overwrite=False):
     """Save files as CSVs."""
-    outDir = ''.join((abfpath, '/OUT'))
+    outDir = ''.join((abf_path, '/OUT'))
 
     # Options for saving files
     if not os.path.isdir(outDir):
@@ -73,7 +71,7 @@ def saveABF(abfpath, overwrite=False):
         print('Saving data to ', outDir)
         print('...')
         os.makedirs(outDir)
-        _writeCSV(abfpath, outDir)
+        _writeCSV(abf_path, outDir)
         print('Done.')
     else:
         if overwrite:
@@ -83,26 +81,26 @@ def saveABF(abfpath, overwrite=False):
             os.makedirs(outDir)
             print('Saving data to ', outDir)
             print('...')
-            _writeCSV(abfpath, outDir)
+            _writeCSV(abf_path, outDir)
             print('Done.')
         else:
             print('Files already exist -- Not overwriting')
 
 
+# noinspection PyTypeChecker,PyProtectedMember
 def _writeCSV(abfpath, outDir):
     """Write CSV files"""
-    stTime_fName = ''.join(('stTime.csv'))
+    stTime_fName = ''.join('stTime.csv')
     stTime = []
     for abfFile in glob.glob(abfpath + "/*.abf"):
         fPrefix = os.path.splitext(abfFile)[0][-4:]
         CMD_fName = ''.join(('CMD_', fPrefix, '.csv'))
         Voltammogram_fName = ''.join(('Voltammogram_', fPrefix, '.csv'))
         abf = pyabf.ABF(abfFile)
-        abfh = abf._headerV2
-        numSamples = abf.sweepPointCount
+        abf_header = abf._headerV2
         CMD = []
         Voltammogram = []
-        stTime.append(abfh.uFileStartTimeMS)
+        stTime.append(abf_header.uFileStartTimeMS)
 
         for sweepNumber in range(abf.sweepCount):
             abf.setSweep(sweepNumber)
@@ -111,7 +109,7 @@ def _writeCSV(abfpath, outDir):
 
         V = map(list, zip(*Voltammogram))
         C = map(list, zip(*CMD))
-        T = np.asarray(stTime)
+        T: ndarray = np.asarray(stTime)
         # Write forcing functions to csv
         with open(os.path.join(outDir, CMD_fName), "w") as f:
             writer = csv.writer(f)

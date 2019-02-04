@@ -10,7 +10,6 @@ class Mulabels:
     def __init__(self, data_dir, label_file_name):
         """Object read from CSV containing data frame of sequence labels"""
         self.data = pd.read_csv(''.join((data_dir, '/', label_file_name)))
-        # self.index = self.data['index']
         self.chems = list(self.data.columns.intersection(['DA', '5HT', '5HIAA', 'NE', 'pH']))
         self.labels = self.data[self.chems]
         target_analyte = []
