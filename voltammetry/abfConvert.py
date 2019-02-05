@@ -15,21 +15,21 @@ class Vgramdata:
     Data collected for calibration
     """
 
-    def __init__(self, abfpath):
+    def __init__(self, abf_path):
         """Load ABF data for calibration"""
-        [self.Voltammogram, self.CMD, self.stTime] = loadABF(abfpath)
+        [self.Voltammogram, self.CMD, self.stTime, self.name] = loadABF(abf_path)
 
     def _plotVoltammograms(self, CMAP=cmx.jet, fnY=lambda x: x):
         """Plot voltammograms"""
-        N = np.shape(self.Voltammogram)[0]  # Number of experiments run
+        N = np.shape(self.Voltammogram)[2]  # Number of experiments run
         for i in range(N, 0, -1):
-            vgrams = np.asarray(self.Voltammogram[i - 1])
+            vgrams = np.asarray(self.Voltammogram[:, :, i - 1])
             Rn = vgrams.shape[1]
             mid = int(np.ceil(Rn / 2))
-            y = (fnY(vgrams[mid, :]))
+            y = np.transpose(fnY(vgrams[:, mid]))
             x = range(len(y))
             plt.plot(x, y, color=CMAP(float(i / N)))
-        plt.title('voltammograms')
+        plt.title(self.name)
         plt.xlabel('sample #')
         plt.ylabel('current (nA)')
         plt.axis('tight')
@@ -37,13 +37,14 @@ class Vgramdata:
 
 
 # noinspection PyProtectedMember
-def loadABF(abfpath):
+def loadABF(abf_path):
     """Convert directory of ABF files to numpy arrays."""
+    abf_name = os.path.basename(abf_path)
     stTime = []
     CMD = []
     Voltammogram = []
     # Combine data from abf files in given path
-    for abfFile in glob.glob(abfpath + "/*.abf"):
+    for abfFile in glob.glob(abf_path + "/*.abf"):
         abf = pyabf.ABF(abfFile)
         abfh = abf._headerV2
         stTime.append(abfh.uFileStartTimeMS)
@@ -58,7 +59,7 @@ def loadABF(abfpath):
 
     Voltammogram = np.swapaxes(Voltammogram, 0, 2)
     CMD = np.swapaxes(CMD, 0, 2)
-    return [Voltammogram, CMD, stTime]
+    return [Voltammogram, CMD, stTime, abf_name]
 
 
 def save_ABF(abf_path, overwrite=False):

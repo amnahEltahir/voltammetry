@@ -14,7 +14,7 @@ def find_stable_section(Voltammogram, window_size):
     sweep_wise = 1
     num_experiments = np.shape(Voltammogram)[2]
     sample_num = np.shape(Voltammogram)[sample_wise]
-    good_window = np.zeros((sample_num, window_size, num_experiments))
+    good_window = np.zeros((window_size, num_experiments))
     exclude_ix = []
 
     for i in range(num_experiments):
@@ -40,8 +40,8 @@ def find_stable_section(Voltammogram, window_size):
         start_index = half_index + window_head
         end_index = n_sweeps - window_tail - 1
         best_win_center_index = int(np.argmin(q[end_index:start_index:-1]))
-        gw = np.array(range(best_win_center_index - window_head, best_win_center_index + window_tail))
-        good_window[:, :, i] = vgrams[:, gw]
+        good_window = np.array(range(best_win_center_index - window_head, best_win_center_index + window_tail))
+        # good_window[:, :, i] = vgrams[:, gw]
         # Step 6: mark any sweeps where the RMS of the difference is an outlier
         ex = mad_outlier(r.loc[gw])
         exclude_ix.append(ex)
