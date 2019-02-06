@@ -13,7 +13,7 @@ def find_stable_section(Voltammogram, window_size):
     sample_wise = 0
     sweep_wise = 1
     num_experiments = np.shape(Voltammogram)[2]
-    sample_num = np.shape(Voltammogram)[sample_wise]
+    # sample_num = np.shape(Voltammogram)[sample_wise]
     good_window = np.zeros((window_size, num_experiments))
     exclude_ix = []
 
@@ -39,17 +39,17 @@ def find_stable_section(Voltammogram, window_size):
         half_index = math.floor(n_sweeps / 2)
         start_index = half_index + window_head
         end_index = n_sweeps - window_tail - 1
-        best_win_center_index = int(np.argmin(q[end_index:start_index:-1]))
-        good_window = np.array(range(best_win_center_index - window_head, best_win_center_index + window_tail))
-        # good_window[:, :, i] = vgrams[:, gw]
+        best_win_center = int(pd.Series.idxmin(q[end_index:start_index:-1]))
+        good_window[:, i] = np.array(range(best_win_center - window_head, best_win_center + window_tail))
         # Step 6: mark any sweeps where the RMS of the difference is an outlier
-        ex = mad_outlier(r.loc[gw])
+        ex = mad_outlier(r.loc[good_window[:, i]])
         exclude_ix.append(ex)
-        #  TODO: Exclude the outliers from use in analysis
+    good_window = good_window.astype(int)
     return [good_window, exclude_ix]
 
 
-def partition_data(voltammograms, labels, trainingSampleSize):
+def partition_data(voltammograms, labels, exclude_ix, trainingSampleSize, good_window=int(150)):
+
     rand.seed(0)  # random sampling reproducible
     num_experiments = voltammograms.shape[2]  # Number of concentrations
     num_sweeps = voltammograms.shape[1]  # Sweep number
@@ -73,8 +73,10 @@ def partition_data(voltammograms, labels, trainingSampleSize):
     testing.experiment = np.zeros((testing_sample_size, num_experiments))
     # Build training and testing structures
     for i in range(num_experiments):
-        vgrams = pd.DataFrame(voltammograms[:, :, i])
+        vgrams = pd.DataFrame(voltammograms[:, good_window[:, i], i])
         labs = np.array(labels)[i]
+        labs[exclude_ix] = np.nan
+        labs[exclude_ix[i]] = np.nan
         population = range(num_sweeps)
         sample = rand.sample(population, training.sampleSize)
         index = []
