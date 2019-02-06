@@ -31,7 +31,7 @@ def best_alpha(training, nAlphas=11, family='mgaussian', ptype='mse', nfolds=10,
 
     for i in range(nAlphas):
         alpha = alphaRange[i]
-        X = fnY(training.vgrams)
+        X = fnY(training.vgrams).astype(float)
         Y = fnY(training.labels.values).astype(float)
         rand.seed(random_seed)
         foldid = scipy.random.choice(nfolds, training.vgrams.shape[0], replace=True)
@@ -47,7 +47,7 @@ def best_alpha(training, nAlphas=11, family='mgaussian', ptype='mse', nfolds=10,
         cvm[i] = fit['cvm'][fit['lambdau'] == fit['lambda_min']]
 
     bestCvm = np.asscalar(min(cvm))
-    bestAlphaIx = pd.Series.idxmin(cvm)
+    bestAlphaIx = pd.Series.idxmin(pd.Series(cvm))
     bestAlpha = alphaRange[bestAlphaIx]
     print('Best alpha = ', '{:.1f}'.format(bestAlpha), ' (error = ', '{:.2f}'.format(bestCvm), ')\n')
     return bestAlpha
@@ -71,7 +71,7 @@ def train_analyte(training, family='mgaussian', alpha=1, ptype='mse', nfolds=10,
     """
     rand.seed(random_seed)
     foldid = scipy.random.choice(nfolds, training.vgrams.shape[0], replace=True)
-    x = fnY(training.vgrams)
+    x = fnY(training.vgrams).astype(float)
     y = np.array(training.labels.values).astype(float)
     t = time.time()
     cvFit = cvglmnet(x=x, y=y, family=family, alpha=alpha, ptype=ptype, nfolds=nfolds, foldid=foldid, parallel=parallel,
@@ -103,9 +103,9 @@ def calcStepStats(chemIx, predictions, labels):
     :param labels: Data Frame, all test labels
     :return: stats: stats structure, statistics calculated on predictions
     """
-    muList = np.unique(labels[chemIx])
+    muList = np.unique(labels.labels[[chemIx]])
     nSteps = muList.size
-    nChems = np.shape(labels)[1]
+    nChems = np.shape(labels.labels)[1]
     # Initialize stats structure
     stats = recordclass('stats', 'labels, predRmse, predSnr, predSnre, mean, sd, n, sem')
     np.seterr(divide='ignore', invalid='ignore')  # SNR and SNRE calculations divide by 0
@@ -128,8 +128,9 @@ def calcStepStats(chemIx, predictions, labels):
     stats.fullSnr = np.empty(nChems)
     stats.fullSnre = np.empty(nChems)
     # Calculate stats for each step
+    #  TODO: check functions for accuracy
     for ix in range(nSteps):
-        selectIx = np.where(labels[chemIx] == muList[ix])
+        selectIx = np.where(labels.labels[[chemIx]] == muList[ix])
         estimate[selectIx] = signal[selectIx, :].mean(axis=1)
         noiseEst[selectIx] = signal[selectIx] - estimate[selectIx]
         ssSig = (signal[selectIx, :] ** 2).sum(axis=1)  # sum square signal
@@ -164,11 +165,11 @@ def plot_Calibration(time_array, predictions, labels, targetAnalyte, chemIx, sta
     :param targetAnalyte: str array, list of analytes
     :param chemIx: int, index of chemical being modeled
     :param stats: stats structure, structure of calculated statistics for variable
-    :return:
+    :return: fig: handle for figure of results
     """
     X = time_array
     Y = predictions
-    L = np.array(labels)
+    L = np.array(labels.labels)
     chemLabel = targetAnalyte[chemIx]
     labColor = 'k'
     units = ''
@@ -192,7 +193,7 @@ def plot_Calibration(time_array, predictions, labels, targetAnalyte, chemIx, sta
         chemLabel = 'pH'
         units = ''
         labColor = 'k'
-
+    fig = plt.figure()
     muLabel = ''.join([chemLabel, units])
     gs = GridSpec(7, 5)
     # Plot Predictions
@@ -232,3 +233,5 @@ def plot_Calibration(time_array, predictions, labels, targetAnalyte, chemIx, sta
     plt.ylabel('SNR (dB)')
     plt.grid()
     plt.axis('tight')
+
+    return fig

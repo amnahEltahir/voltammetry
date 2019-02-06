@@ -2,7 +2,7 @@ from __future__ import absolute_import
 import sys
 import os
 from .abfConvert import loadABF
-from .abfConvert import voltammogram_data
+from .abfConvert import Data
 from .LabelData import Mulabels
 from .preprocessing import *
 from .calibrate import *

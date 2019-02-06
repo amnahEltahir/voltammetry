@@ -8,6 +8,11 @@ class Mulabels:
     """
 
     def __init__(self, data_dir, label_file_name):
+        """
+        Initialize MuLabels class
+        :param data_dir: string, directory containing label file
+        :param label_file_name: string, name of label file
+        """
         """Object read from CSV containing data frame of sequence labels"""
         self.data = pd.read_csv(''.join((data_dir, '/', label_file_name)))
         self.chems = list(self.data.columns.intersection(['DA', '5HT', '5HIAA', 'NE', 'pH']))

@@ -6,6 +6,18 @@ from recordclass import recordclass
 from statsmodels import robust
 
 
+class PreprocessedData:
+    def __init__(self, voltammogram_data, muLabels, window_size=150, trainingSampleSize=50):
+        print("Finding stable section with window size", window_size)
+        [good_window, exclude_ix] = find_stable_section(voltammogram_data, window_size)
+        print("Partitioning data with training sample size", trainingSampleSize)
+        [training_part, testing_part] = partition_data(voltammogram_data, muLabels.labels, good_window, exclude_ix,
+                                                       trainingSampleSize)
+        print("Flattening Data")
+        [self.training, self.testing] = flatten_data(training_part, testing_part)
+        print("PRE-PROCESSING COMPLETE!!!!")
+
+
 def find_stable_section(Voltammogram, window_size=150):
     """
     Select window with stable median value
@@ -20,7 +32,6 @@ def find_stable_section(Voltammogram, window_size=150):
     # sample_num = np.shape(Voltammogram)[sample_wise]
     good_window = np.zeros((window_size, num_experiments))
     exclude_ix = []
-
     for i in range(num_experiments):
         vgrams = Voltammogram[:, :, i]
         n_sweeps = np.shape(vgrams)[sweep_wise]
@@ -28,7 +39,6 @@ def find_stable_section(Voltammogram, window_size=150):
         # Calculate "before" and "after" window sizes based on move
         window_head = math.floor(window_size / 2)
         window_tail = math.ceil(window_size / 2)
-
         # Step 1: Find median waveform for the window centered at each step
         vgram_df = pd.DataFrame(vgrams)
         vgram_median = vgram_df.rolling(window_size).median()
@@ -39,7 +49,6 @@ def find_stable_section(Voltammogram, window_size=150):
         # Step 4: Find the mean RMS of the window centered on each sweep
         q = r.rolling(window_size).mean()
         # Step 5: Find the window centered on the sweep with the lowest q value in the
-        # second half of the data
         half_index = math.floor(n_sweeps / 2)
         start_index = half_index + window_head
         end_index = n_sweeps - window_tail - 1
@@ -52,13 +61,13 @@ def find_stable_section(Voltammogram, window_size=150):
     return [good_window, exclude_ix]
 
 
-def partition_data(voltammograms, labels, exclude_ix, good_window, trainingSampleSize=50):
+def partition_data(voltammograms, labels, good_window, exclude_ix, trainingSampleSize=50):
     """
     Partition data into "training" and testing
     :param voltammograms: array of voltammetry data
     :param labels: Data frame of experiment labels
-    :param exclude_ix: list, indices of outliers
     :param good_window: array, window of region with stable median value
+    :param exclude_ix: list, indices of outliers
     :param trainingSampleSize: int, number of sweeps in training
     :return: training: structure with training data
     :return: testing: structure with testing data
@@ -66,8 +75,7 @@ def partition_data(voltammograms, labels, exclude_ix, good_window, trainingSampl
 
     rand.seed(0)  # random sampling reproducible
     num_experiments = voltammograms.shape[2]  # Number of concentrations
-    num_sweeps = voltammograms.shape[1]  # Sweep number
-    # num_samples = voltammograms.shape[0]  # Sample number
+    num_sweeps = good_window.shape[0]  # Number of sweeps in window
     # initialize training and testing structures
     training = recordclass('training', 'sampleSize, index, vgrams, labels, experiment')
     testing = recordclass('testing', 'sampleSize, index, vgrams, labels, experiment')

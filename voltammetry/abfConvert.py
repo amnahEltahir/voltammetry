@@ -6,13 +6,12 @@ import csv
 import matplotlib.pyplot as plt
 import matplotlib.cm as cmx
 import shutil
-
 from numpy.core.multiarray import ndarray
 
 
-class voltammogram_data:
+class Data:
     """
-    Experimental taken from directory of abf files.
+    Experimental data taken from directory of abf files.
     """
 
     def __init__(self, abf_path):
@@ -56,25 +55,22 @@ def loadABF(abf_path):
     :return: abf_name: string with base name of directory
     """
     abf_name = os.path.basename(abf_path)
-    stTime = []
-    CMD = []
-    Voltammogram = []
     # Combine data from abf files in given path
-    for abfFile in glob.glob(abf_path + "/*.abf"):
-        abf = pyabf.ABF(abfFile)
-        abfh = abf._headerV2
-        stTime.append(abfh.uFileStartTimeMS)
-        CMD_step = []
-        Voltammogram_step = []
+    abf_glob = sorted(glob.glob(abf_path + "/*.abf"))  # collection of files in directory
+    num_files = len(abf_glob)  # number of abf files in directory
+    abf_0 = pyabf.ABF(abf_glob[0])
+    sweep_count = abf_0.sweepCount  # Number of sweeps (max 1000)
+    sweep_point_count = abf_0.sweepPointCount  # Number of points in sweep
+    Voltammogram = np.empty((sweep_point_count, sweep_count, num_files))
+    CMD = np.empty((sweep_point_count, sweep_count, num_files))
+    stTime = np.empty(num_files)
+    for i in range(num_files):
+        abf = pyabf.ABF(abf_glob[i])
+        stTime[i] = abf._headerV2.uFileStartTimeMS
         for sweepNumber in range(abf.sweepCount):
             abf.setSweep(sweepNumber)
-            CMD_step.append(np.asarray(abf.sweepX))
-            Voltammogram_step.append(np.asarray(abf.sweepY))
-        CMD.append(CMD_step)
-        Voltammogram.append(Voltammogram_step)
-
-    Voltammogram = np.swapaxes(Voltammogram, 0, 2)
-    CMD = np.swapaxes(CMD, 0, 2)
+            CMD[:, sweepNumber, i] = np.asarray(abf.sweepX)
+            Voltammogram[:, sweepNumber, i] = np.asarray(abf.sweepY)
     return [Voltammogram, CMD, stTime, abf_name]
 
 
@@ -110,16 +106,17 @@ def save_ABF(abf_path, overwrite=False):
 
 
 # noinspection PyTypeChecker,PyProtectedMember
-def _writeCSV(abfpath, outDir):
+def _writeCSV(abf_path, outDir):
+    #  TODO: Make compatible with loadABF
     """
     Write data from abf file to csv
-    :param abfpath: directory of abf files
+    :param abf_path: directory of abf files
     :param outDir: path of output directory
     :return:
     """
     stTime_fName = ''.join('stTime.csv')
     stTime = []
-    for abfFile in glob.glob(abfpath + "/*.abf"):
+    for abfFile in glob.glob(abf_path + "/*.abf"):
         fPrefix = os.path.splitext(abfFile)[0][-4:]
         CMD_fName = ''.join(('CMD_', fPrefix, '.csv'))
         Voltammogram_fName = ''.join(('Voltammogram_', fPrefix, '.csv'))
