@@ -6,9 +6,13 @@ from recordclass import recordclass
 from statsmodels import robust
 
 
-def find_stable_section(Voltammogram, window_size):
+def find_stable_section(Voltammogram, window_size=150):
     """
-    Find portion of calibration that is most stable.
+    Select window with stable median value
+    :param Voltammogram: array, Voltammetry data
+    :param window_size: int, number of sweeps in window (default = 150)
+    :return: good_window: array of good window index
+    :return: exclude_ix: list, indices of outliers
     """
     sample_wise = 0
     sweep_wise = 1
@@ -48,7 +52,17 @@ def find_stable_section(Voltammogram, window_size):
     return [good_window, exclude_ix]
 
 
-def partition_data(voltammograms, labels, exclude_ix, trainingSampleSize, good_window=int(150)):
+def partition_data(voltammograms, labels, exclude_ix, good_window, trainingSampleSize=50):
+    """
+    Partition data into "training" and testing
+    :param voltammograms: array of voltammetry data
+    :param labels: Data frame of experiment labels
+    :param exclude_ix: list, indices of outliers
+    :param good_window: array, window of region with stable median value
+    :param trainingSampleSize: int, number of sweeps in training
+    :return: training: structure with training data
+    :return: testing: structure with testing data
+    """
 
     rand.seed(0)  # random sampling reproducible
     num_experiments = voltammograms.shape[2]  # Number of concentrations
@@ -97,12 +111,18 @@ def partition_data(voltammograms, labels, exclude_ix, trainingSampleSize, good_w
 
 
 def flatten_data(training, testing):
+    """
+    Transform voltammogram and label data into proper dimensions for cvglmnet
+    :param training: structure containing training and testing data
+    :param testing: structure containing testing data
+    :return: training: structure with flattened training data
+    :return: testing: structure with flattened testing data
+    """
     training.index = np.where(np.hstack(training.index))
     training.vgrams = pd.concat(training.vgrams, axis=1)
     training.labels = pd.concat(training.labels, axis=0)
     training.experiment = np.vstack(training.experiment)
     training.n = np.shape(training.index)
-
     training.vgrams = np.transpose(training.vgrams)
 
     testing.index = np.where(np.hstack(testing.index))
@@ -110,13 +130,18 @@ def flatten_data(training, testing):
     testing.labels = pd.concat(testing.labels, axis=0)
     testing.experiment = np.vstack(testing.experiment)
     testing.n = np.shape(testing.index)
-
     testing.vgrams = np.transpose(testing.vgrams)
+
     return [training, testing]
 
 
 def mad_outlier(data, thresh=3.5):
-    # use Median Absolute Deviation method, default in MATLAB
+    """
+    Use Median Absolute Deviation method, default in MATLAB
+    :param data: array of voltammetry data
+    :param thresh: threshold for MAD outlier detection
+    :return: exclude_index: indices of outliers
+    """
     MAD = robust.mad(data[np.isfinite(data)])
     exclude_index = np.where((data < data.median() - thresh * MAD) | (data > data.median() + 3.5 * MAD))
     return exclude_index

@@ -10,17 +10,26 @@ import shutil
 from numpy.core.multiarray import ndarray
 
 
-class Vgramdata:
+class voltammogram_data:
     """
-    Data collected for calibration
+    Experimental taken from directory of abf files.
     """
 
     def __init__(self, abf_path):
-        """Load ABF data for calibration"""
+        """
+        Define class and class functions
+        :param abf_path: path containing abf files
+        """
         [self.Voltammogram, self.CMD, self.stTime, self.name] = loadABF(abf_path)
 
     def _plotVoltammograms(self, CMAP=cmx.jet, fnY=lambda x: x):
-        """Plot voltammograms"""
+        """
+        Plot raw voltammogram data.
+        :param CMAP: color map defined in matplotlib.cm (default = jet)
+        :param fnY: function applied to voltammograms (defualt = lambda x:x)
+        :return: fig: figure object
+        """
+        fig = plt.figure()
         N = np.shape(self.Voltammogram)[2]  # Number of experiments run
         for i in range(N, 0, -1):
             vgrams = np.asarray(self.Voltammogram[:, :, i - 1])
@@ -33,12 +42,19 @@ class Vgramdata:
         plt.xlabel('sample #')
         plt.ylabel('current (nA)')
         plt.axis('tight')
-        plt.show()
+        return fig
 
 
 # noinspection PyProtectedMember
 def loadABF(abf_path):
-    """Convert directory of ABF files to numpy arrays."""
+    """
+    Loads in abf file data from directory
+    :param abf_path: string, abf directory path
+    :return: Voltammogram: list, Voltammetry data from directory
+    :return: CMD: list, forcing function from abf data
+    :return: stTime: array, start time of each file
+    :return: abf_name: string with base name of directory
+    """
     abf_name = os.path.basename(abf_path)
     stTime = []
     CMD = []
@@ -63,7 +79,12 @@ def loadABF(abf_path):
 
 
 def save_ABF(abf_path, overwrite=False):
-    """Save files as CSVs."""
+    """
+    Save abf files to csv directory
+    :param abf_path: string, Path of csv output files Files
+    :param overwrite: boolean, replace files saved in output directory
+    :return:
+    """
     outDir = ''.join((abf_path, '/OUT'))
 
     # Options for saving files
@@ -90,7 +111,12 @@ def save_ABF(abf_path, overwrite=False):
 
 # noinspection PyTypeChecker,PyProtectedMember
 def _writeCSV(abfpath, outDir):
-    """Write CSV files"""
+    """
+    Write data from abf file to csv
+    :param abfpath: directory of abf files
+    :param outDir: path of output directory
+    :return:
+    """
     stTime_fName = ''.join('stTime.csv')
     stTime = []
     for abfFile in glob.glob(abfpath + "/*.abf"):
