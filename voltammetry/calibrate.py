@@ -103,9 +103,9 @@ def calcStepStats(chemIx, predictions, labels):
     :param labels: Data Frame, all test labels
     :return: stats: stats structure, statistics calculated on predictions
     """
-    muList = np.unique(labels.labels[[chemIx]])
+    muList = np.unique(labels[[chemIx]])
     nSteps = muList.size
-    nChems = np.shape(labels.labels)[1]
+    nChems = np.shape(labels)[1]
     # Initialize stats structure
     stats = recordclass('stats', 'labels, predRmse, predSnr, predSnre, mean, sd, n, sem')
     np.seterr(divide='ignore', invalid='ignore')  # SNR and SNRE calculations divide by 0
