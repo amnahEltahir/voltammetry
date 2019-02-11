@@ -6,8 +6,9 @@ import sys
 
 abfpath = sys.argv[1]
 vg = voltammetry.Data(abfpath)
-labels = voltammetry.Mulabrm els(abfpath, 'run.csv')
+labels = voltammetry.Mulabels(abfpath, 'run.csv')
 data = voltammetry.PreprocessedData(vg.Voltammogram, labels)
-cvFit = voltammetry.train_analyte(data.training, alpha=0)
+bestAlpha = voltammetry.best_alpha(data.training)
+cvFit = voltammetry.train_analyte(data.training, alpha=bestAlpha)
 predictions = voltammetry.test_analyte(data.testing, cvFit)
-stats = voltammetry.calcStepStats('DA', predictions, data.testing.labels)
+stats = voltammetry.calcStepStats(0, predictions, data.testing.labels)

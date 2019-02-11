@@ -72,32 +72,32 @@ def partition_data(voltammograms, labels, good_window, exclude_ix, trainingSampl
     :return: training: structure with training data
     :return: testing: structure with testing data
     """
-
     rand.seed(0)  # random sampling reproducible
     num_experiments = voltammograms.shape[2]  # Number of concentrations
+    num_samplePoints = voltammograms.shape[0]  # Number in points per voltammogram
     num_sweeps = good_window.shape[0]  # Number of sweeps in window
+    num_Chems = labels.shape[1]  # Number of chemicals/columns in label variable
     # initialize training and testing structures
     training = recordclass('training', 'sampleSize, index, vgrams, labels, experiment')
     testing = recordclass('testing', 'sampleSize, index, vgrams, labels, experiment')
     # Partition each experiment
-    # training partition
     training.sampleSize = trainingSampleSize
-    training.index = np.zeros((num_sweeps, num_experiments))
-    training.vgrams = []
-    training.labels = []
-    training.experiment = np.zeros((trainingSampleSize, num_experiments))
-    # testing partition
     testing_sample_size = num_sweeps - trainingSampleSize
+    # training partition
+    training.index = np.empty((trainingSampleSize, num_experiments))
+    training.vgrams = np.empty((num_samplePoints, trainingSampleSize, num_experiments))
+    training.labels = np.empty((trainingSampleSize, num_Chems, num_experiments))
+    training.experiment = np.empty((trainingSampleSize, num_experiments))
+    # testing partition
     testing.sampleSize = testing_sample_size
-    testing.index = np.zeros((num_sweeps, num_experiments))
-    testing.vgrams = []
-    testing.labels = []
-    testing.experiment = np.zeros((testing_sample_size, num_experiments))
+    testing.index = np.empty((testing_sample_size, num_experiments))
+    testing.vgrams = np.empty((num_samplePoints, testing_sample_size, num_experiments))
+    testing.labels = np.empty((testing_sample_size, num_Chems, num_experiments))
+    testing.experiment = np.empty((testing_sample_size, num_experiments))
     # Build training and testing structures
     for i in range(num_experiments):
         vgrams = pd.DataFrame(voltammograms[:, good_window[:, i], i])
         labs = np.array(labels)[i]
-        labs[exclude_ix] = np.nan
         labs[exclude_ix[i]] = np.nan
         population = range(num_sweeps)
         sample = rand.sample(population, training.sampleSize)
@@ -105,14 +105,16 @@ def partition_data(voltammograms, labels, good_window, exclude_ix, trainingSampl
         for j in population:
             index.append(j in sample)
         # assign training data
-        training.index[:, i] = np.array(index)
-        training.vgrams.append(vgrams.loc[:, index])
-        training.labels.append(pd.DataFrame(pd.np.tile(labs, (trainingSampleSize, 1))))
+        training_index = np.where(index)
+        training.index[:, i] = np.array(training_index[:])
+        training.vgrams[:, :, i] = vgrams.iloc[:, training_index[0]]
+        training.labels[:, :, i] = np.tile(labs, (trainingSampleSize, 1))
         training.experiment[:, i] = [num_experiments + 1] * trainingSampleSize
         # assign testing data
-        testing.index[:, i] = ~np.array(index)
-        testing.vgrams.append(vgrams.loc[:, ~np.array(index)])
-        testing.labels.append(pd.DataFrame(pd.np.tile(labs, (testing_sample_size, 1))))
+        testing_index = np.where(~np.array(index))
+        testing.index[:, i] = np.array(testing_index[:])
+        testing.vgrams[:, :, i] = vgrams.iloc[:, testing_index[0]]
+        testing.labels[:, :, i] = np.tile(labs, (testing_sample_size, 1))
         testing.experiment[:, i] = [num_experiments + 1] * testing_sample_size
 
     return [training, testing]
@@ -127,15 +129,15 @@ def flatten_data(training, testing):
     :return: testing: structure with flattened testing data
     """
     training.index = np.where(np.hstack(training.index))
-    training.vgrams = pd.concat(training.vgrams, axis=1)
-    training.labels = pd.concat(training.labels, axis=0)
+    training.vgrams = np.vstack(training.vgrams.swapaxes(0, 2)).transpose()
+    training.labels = np.hstack(training.labels.transpose()).transpose()
     training.experiment = np.vstack(training.experiment)
     training.n = np.shape(training.index)
     training.vgrams = np.transpose(training.vgrams)
 
     testing.index = np.where(np.hstack(testing.index))
-    testing.vgrams = pd.concat(testing.vgrams, axis=1)
-    testing.labels = pd.concat(testing.labels, axis=0)
+    testing.vgrams = np.vstack(testing.vgrams.swapaxes(0, 2)).transpose()
+    testing.labels = np.hstack(testing.labels.transpose()).transpose()
     testing.experiment = np.vstack(testing.experiment)
     testing.n = np.shape(testing.index)
     testing.vgrams = np.transpose(testing.vgrams)
