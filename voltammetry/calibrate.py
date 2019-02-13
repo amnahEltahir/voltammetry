@@ -103,7 +103,7 @@ def calcStepStats(chemIx, predictions, labels):
     :param labels: Data Frame, all test labels
     :return: stats: stats structure, statistics calculated on predictions
     """
-    muList = np.unique(labels[[chemIx]])
+    muList = np.unique(labels[:, chemIx])
     nSteps = muList.size
     nChems = np.shape(labels)[1]
     # Initialize stats structure
@@ -128,14 +128,11 @@ def calcStepStats(chemIx, predictions, labels):
     stats.fullSNR = np.empty(nChems)
     stats.fullSNRE = np.empty(nChems)
     # Calculate stats for each step
-    #  TODO: check functions for accuracy
     for ix in range(nSteps):
-        selectIx = np.where(labels[[chemIx]] == muList[ix])[0]
+        selectIx = np.where(labels[:, chemIx] == muList[ix])[0]
         stepSize = len(selectIx)
-        estimate[selectIx] = np.tile(signal[selectIx, :].mean(axis=0), (stepSize, 1))
-        noiseEst[selectIx] = signal[selectIx] - estimate[selectIx]
-        # ssSig = (signal[selectIx, :] ** 2).sum(axis=0)  # sum square signal
-        # ssNoiseEst = (noiseEst[selectIx, :] ** 2).sum(axis=1)  # sum square noise Estimate
+        estimate[selectIx, :] = np.tile(signal[selectIx, :].mean(axis=0), (stepSize, 1))
+        noiseEst[selectIx, :] = signal[selectIx] - estimate[selectIx]
         stats.labels[ix, :] = truth[selectIx[0], :]
 
         stats.prediction_RMSE[ix, :] = np.sqrt(np.square(noise[selectIx, :]).mean(axis=0))
@@ -145,14 +142,11 @@ def calcStepStats(chemIx, predictions, labels):
         stats.sd[ix, :] = np.std(signal[selectIx, :])
         stats.n[ix, :] = np.size(signal[selectIx, :])
         stats.sem[ix, :] = stats.sd[ix, :] / np.sqrt(stats.n[ix, :])
-        # Calculate full data statistics
-        stats.fullRMSE= np.sqrt((noise ** 2).mean(axis=1))
-        ssSignal = np.square(signal).sum(axis=1)
-        ssNoise = np.square(noise).sum(axis=1)
-        ssNoiseEst = np.square(noiseEst).sum()
-        stats.fullSNR = 10 * np.log10((ssSignal - ssNoise) / ssNoise)
-        stats.fullSNRE = 10 * np.log10((ssSignal - ssNoiseEst) / ssNoiseEst)
-        np.seterr(divide=None, invalid=None)  # revert to warning for division by 0
+    # Calculate full data statistics
+    stats.fullRMSE = np.sqrt((noise ** 2).mean(axis=0))
+    stats.fullSNR = calculate_SNR(signal, noise)
+    stats.fullSNRE = calculate_SNR(signal, noiseEst)
+    np.seterr(divide=None, invalid=None)  # revert to warning for division by 0
     return stats
 
 
@@ -176,23 +170,23 @@ def plot_Calibration(time_array, predictions, labels, targetAnalyte, chemIx, sta
     if chemLabel == 'NE':
         chemLabel = 'NE'
         units = '(nM)'
-        labColor = 'm'
+        labColor = '#b4531f'
     if (chemLabel == 'Dopamine') | (chemLabel == 'DA'):
         chemLabel = 'DA'
         units = '(nM)'
-        labColor = 'c'
+        labColor = '#1f77b4'
     if (chemLabel == 'Serotonin') | (chemLabel == '5HT'):
         chemLabel = '5HT'
         units = '(nM)'
-        labColor = 'y'
+        labColor = '#b49e1f'
     if chemLabel == '5HIAA':
         chemLabel = '5HIAA'
         units = '(nM)'
-        labColor = 'g'
+        labColor = '#871fb4'
     if chemLabel == 'pH':
         chemLabel = 'pH'
         units = ''
-        labColor = 'k'
+        labColor = '#3ebd30'
     fig = plt.figure()
     muLabel = ''.join([chemLabel, units])
     gs = GridSpec(7, 5)
@@ -204,7 +198,7 @@ def plot_Calibration(time_array, predictions, labels, targetAnalyte, chemIx, sta
     plt.ylabel(muLabel)
 
     # Plot actual concentrations
-    hAct = plt.scatter(X, L[:, chemIx], color='red', marker='.', linewidth=0.5)
+    hAct = plt.scatter(X, L[:, chemIx], color='k', marker='.', linewidth=0.5)
     ax1.legend((hPred, hAct), ('predicted', 'actual'))
     plt.axis('tight')
 

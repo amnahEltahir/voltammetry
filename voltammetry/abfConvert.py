@@ -19,7 +19,8 @@ class Data:
         Define class and class functions
         :param abf_path: path containing abf files
         """
-        [self.Voltammogram, self.CMD, self.stTime, self.name, self.samplingRate] = loadABF(abf_path)
+        [self.Voltammogram, self.CMD, self.stTime, self.name, self.samplingRate, self.sweep_count,
+         self.sweep_point_count] = loadABF(abf_path)
 
     def _plotVoltammograms(self, CMAP=cmx.jet, fnY=lambda x: x):
         """
@@ -60,8 +61,8 @@ def loadABF(abf_path):
     abf_glob = sorted(glob.glob(abf_path + "/*.abf"))  # collection of files in directory
     num_files = len(abf_glob)  # number of abf files in directory
     abf_0 = pyabf.ABF(abf_glob[0])
-    sweep_count = abf_0.sweepCount  # Number of sweeps (max 1000)
-    sweep_point_count = abf_0.sweepPointCount  # Number of points in sweep
+    sweep_count = abf_0.sweepCount  # Number of sweeps (max 10000)
+    sweep_point_count = abf_0.sweepPointCount  # Number of points in sweep (97 Hz = 1032)
     sampling_rate = abf_0.dataRate
     Voltammogram = np.empty((sweep_point_count, sweep_count, num_files))
     CMD = np.empty((sweep_point_count, sweep_count, num_files))
@@ -73,7 +74,7 @@ def loadABF(abf_path):
             abf.setSweep(sweepNumber)
             CMD[:, sweepNumber, i] = np.asarray(abf.sweepX)
             Voltammogram[:, sweepNumber, i] = np.asarray(abf.sweepY)
-    return [Voltammogram, CMD, stTime, abf_name, sampling_rate]
+    return [Voltammogram, CMD, stTime, abf_name, sampling_rate, sweep_count, sweep_point_count]
 
 
 def save_ABF(abf_path, overwrite=False):
