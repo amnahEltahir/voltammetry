@@ -194,7 +194,7 @@ def plot_Calibration(time_array, predictions, labels, targetAnalyte, chemIx, sta
     ax1 = plt.subplot(gs[1:4, :])
     hPred = plt.scatter(X, Y[:, chemIx], marker='.', color=labColor)
     plt.title(chemLabel)
-    plt.xlabel('samples')
+    plt.xlabel('Time (s)')
     plt.ylabel(muLabel)
 
     # Plot actual concentrations
