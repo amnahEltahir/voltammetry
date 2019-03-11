@@ -7,7 +7,7 @@ from statsmodels import robust
 
 
 class PreprocessedData:
-    def __init__(self, voltammogram_data, muLabels, window_size=150, trainingSampleSize=50):
+    def __init__(self, voltammogram_data, muLabels, window_size=1500, trainingSampleSize=500):
         print("Finding stable section with window size", window_size)
         [good_window, exclude_ix] = find_stable_section(voltammogram_data, window_size)
         print("Partitioning data with training sample size", trainingSampleSize)
@@ -86,6 +86,7 @@ def partition_data(voltammograms, labels, good_window, exclude_ix, trainingSampl
     testing.sampleSize = testing_sample_size
     # training partition
     training.index = [None] * num_experiments
+    # TODO: redefine index
     training.vgrams = [None] * num_experiments
     training.labels = [None] * num_experiments
     training.experiment = [None] * num_experiments
@@ -128,13 +129,13 @@ def flatten_data(training, testing):
     :return: training: structure with flattened training data
     :return: testing: structure with flattened testing data
     """
-    training.index = np.hstack(training.index)
+    training.index = np.where(np.hstack(training.index) > -1)[0]
     training.vgrams = np.hstack(training.vgrams).transpose()
     training.labels = np.vstack(training.labels)
     training.experiment = np.vstack(training.experiment)
     training.n = np.shape(training.index)
 
-    testing.index = np.hstack(testing.index)
+    testing.index = np.where(np.hstack(testing.index) > -1)[0]
     testing.vgrams = np.hstack(testing.vgrams).transpose()
     testing.labels = np.vstack(testing.labels)
     testing.experiment = np.vstack(testing.experiment)
