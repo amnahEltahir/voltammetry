@@ -72,7 +72,7 @@ def loadABF(abf_path):
         stTime[i] = abf._headerV2.uFileStartTimeMS
         for sweepNumber in range(abf.sweepCount):
             abf.setSweep(sweepNumber)
-            CMD[:, sweepNumber, i] = np.asarray(abf.sweepX)
+            CMD[:, sweepNumber, i] = np.asarray(abf.sweepC)
             Voltammogram[:, sweepNumber, i] = np.asarray(abf.sweepY)
     return [Voltammogram, CMD, stTime, abf_name, sampling_rate, sweep_count, sweep_point_count]
 

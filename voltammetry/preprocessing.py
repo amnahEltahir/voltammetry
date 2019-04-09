@@ -86,7 +86,6 @@ def partition_data(voltammograms, labels, good_window, exclude_ix, trainingSampl
     testing.sampleSize = testing_sample_size
     # training partition
     training.index = [None] * num_experiments
-    # TODO: redefine index
     training.vgrams = [None] * num_experiments
     training.labels = [None] * num_experiments
     training.experiment = [None] * num_experiments
