@@ -2,9 +2,10 @@ import pickle
 import os
 import numpy as np
 from voltammetry import calcStepStats
+import scipy.io as sio
 
 
-def save_model(filename, cvFit, predictions, data, labels, outdir):
+def save_model(filename, cvFit, predictions, data, labels, outdir="OUT"):
     """
     :param filename: name of original file containing data
     :param cvFit:
@@ -18,17 +19,19 @@ def save_model(filename, cvFit, predictions, data, labels, outdir):
     pkl_filename = os.path.join(outdir, filename + ".pkl")
     with open(pkl_filename, 'wb') as file:
         pickle.dump(cvFit, file)
-
+    mat_filename = os.path.join(outdir, filename + ".mat")
+    sio.savemat(mat_filename, mdict={'cvFit': cvFit})
     hdr_filename = os.path.join(outdir, filename + '.hdr')
     with open(hdr_filename, "w") as header_file:
         header_file.write(filename)
-        header_file.write('\n' + "training sample size" + data.training.sampleSize)
-        header_file.write('\n' + "testing sample size" + data.testing.sampleSize)
+        header_file.write('\n' + "training sample size: " + str(data.training.sampleSize))
+        header_file.write('\n' + "testing sample size: " + str(data.testing.sampleSize))
         attributes = ["labels", "prediction_RMSE", "prediction_SNR", "prediction_SNRE", "mean", "sd", "n", "sem",
                       "fullRMSE", "fullSNR", "fullSNRE"]
         for chemIx in range(len(labels.targetAnalyte)):
-            header_file.write('\n' + labels.targetAnalyte[chemIx] + ':')
+            header_file.write('\n---\n' + labels.targetAnalyte[chemIx] + ':')
             stats = calcStepStats(chemIx, predictions, data.testing.labels)
             for attr in attributes:
-                header_file.write('\n' + attr + ',')
+                header_file.write('\n' + attr + ', ')
                 header_file.write(np.array2string(stats.__dict__.get(attr)))
+

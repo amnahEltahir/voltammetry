@@ -108,42 +108,5 @@ def save_ABF(abf_path, overwrite=False):
             print('Files already exist -- Not overwriting')
 
 
-# noinspection PyTypeChecker,PyProtectedMember
-def _writeCSV(abf_path, outDir):
-    #  TODO: Make compatible with loadABF
-    """
-    Write data from abf file to csv
-    :param abf_path: directory of abf files
-    :param outDir: path of output directory
-    :return:
-    """
-    stTime_fName = ''.join('stTime.csv')
-    stTime = []
-    for abfFile in glob.glob(abf_path + "/*.abf"):
-        fPrefix = os.path.splitext(abfFile)[0][-4:]
-        CMD_fName = ''.join(('CMD_', fPrefix, '.csv'))
-        Voltammogram_fName = ''.join(('Voltammogram_', fPrefix, '.csv'))
-        abf = pyabf.ABF(abfFile)
-        abf_header = abf._headerV2
-        CMD = []
-        Voltammogram = []
-        stTime.append(abf_header.uFileStartTimeMS)
-
-        for sweepNumber in range(abf.sweepCount):
-            abf.setSweep(sweepNumber)
-            CMD.append(np.asarray(abf.sweepX))
-            Voltammogram.append(np.asarray(abf.sweepY))
-
-        V = map(list, zip(*Voltammogram))
-        C = map(list, zip(*CMD))
-        T: ndarray = np.asarray(stTime)
-        # Write forcing functions to csv
-        with open(os.path.join(outDir, CMD_fName), "w") as f:
-            writer = csv.writer(f)
-            writer.writerows(C)
-        # Write voltammograms to csv
-        with open(os.path.join(outDir, Voltammogram_fName), "w") as f:
-            writer = csv.writer(f)
-            writer.writerows(V)
-            # Write time to csv
-            np.savetxt(os.path.join(outDir, stTime_fName), T, delimiter=",")
+#  TODO: Parse substring for saving model
+#  def parse_file_name(abfpath):

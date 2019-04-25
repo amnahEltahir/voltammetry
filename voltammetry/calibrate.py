@@ -9,7 +9,6 @@ import time
 from glmnet_python import cvglmnet, cvglmnetPredict
 
 
-
 def best_alpha(training, nAlphas=11, family='mgaussian', ptype='mse', nfolds=10, parallel=True, keep=False,
                grouped=True, random_seed=0, fnY=lambda x: np.diff(x)):
     """
@@ -74,6 +73,9 @@ def train_analyte(training, family='mgaussian', alpha=1, ptype='mse', nfolds=10,
     foldid = scipy.random.choice(nfolds, training.vgrams.shape[0], replace=True)
     x = fnY(training.vgrams).astype(float)
     y = np.array(training.labels).astype(float)
+    [r, c] = y.shape  # GLMnet has issue with 1 vector  labels, add vector of zeros
+    if c == 1:
+        y = np.concatenate((y, np.zeros((r, 1))), axis=1)
     t = time.time()
     cvFit = cvglmnet(x=x, y=y, family=family, alpha=alpha, ptype=ptype, nfolds=nfolds, foldid=foldid, parallel=parallel,
                      keep=keep, grouped=grouped)
@@ -93,6 +95,8 @@ def test_analyte(testing, cvFit, fnY=lambda x: np.diff(x), s='lambda_min'):
     """
     xx = fnY(testing.vgrams)
     yy = cvglmnetPredict(cvFit, xx, s)
+    #if yy.ndim == 3:
+    #    yy = np.squeeze(yy,axis=2)
     return yy
 
 
@@ -106,43 +110,43 @@ def calcStepStats(chemIx, predictions, labels):
     """
     muList = np.unique(labels[:, chemIx])
     nSteps = muList.size
-    nChems = np.shape(labels)[1]
     # Initialize stats structure
     stats = recordclass('stats', 'labels, prediction_RMSE, prediction_SNR, prediction_SNRE, mean, sd, n, sem')
     np.seterr(divide='ignore', invalid='ignore')  # SNR and SNRE calculations divide by 0
     # initialize variables for calculating stats
-    signal = np.squeeze(predictions, axis=2)
-    truth = np.array(labels)
+    signal = np.squeeze(predictions, axis=2)[:, chemIx]
+    signal_len = signal.shape[0]
+    truth = np.array(labels[:, chemIx])
     noise = np.array(signal - truth)
-    estimate = np.empty(signal.shape)
-    noiseEst = np.empty(signal.shape)
-    stats.labels = np.empty((nSteps, nChems))
-    stats.prediction_RMSE = np.empty((nSteps, nChems))
-    stats.prediction_SNR = np.empty((nSteps, nChems))
-    stats.prediction_SNRE = np.empty((nSteps, nChems))
-    stats.mean = np.empty((nSteps, nChems))
-    stats.sd = np.empty((nSteps, nChems))
-    stats.n = np.empty((nSteps, nChems))
-    stats.sem = np.empty((nSteps, nChems))
+    estimate = np.empty(signal_len)
+    noiseEst = np.empty(signal_len)
+    stats.labels = np.empty(nSteps)
+    stats.prediction_RMSE = np.empty(nSteps)
+    stats.prediction_SNR = np.empty(nSteps)
+    stats.prediction_SNRE = np.empty(nSteps)
+    stats.mean = np.empty(nSteps)
+    stats.sd = np.empty(nSteps)
+    stats.n = np.empty(nSteps)
+    stats.sem = np.empty(nSteps)
 
-    stats.fullRMSE = np.empty(nChems)
-    stats.fullSNR = np.empty(nChems)
-    stats.fullSNRE = np.empty(nChems)
+    stats.fullRMSE = np.nan
+    stats.fullSNR = np.nan
+    stats.fullSNRE = np.nan
     # Calculate stats for each step
     for ix in range(nSteps):
         selectIx = np.where(labels[:, chemIx] == muList[ix])[0]
         stepSize = len(selectIx)
-        estimate[selectIx, :] = np.tile(signal[selectIx, :].mean(axis=0), (stepSize, 1))
-        noiseEst[selectIx, :] = signal[selectIx] - estimate[selectIx]
-        stats.labels[ix, :] = truth[selectIx[0], :]
+        estimate[selectIx] = np.tile(signal[selectIx].mean(), (stepSize))
+        noiseEst[selectIx] = signal[selectIx] - estimate[selectIx]
+        stats.labels[ix] = truth[selectIx[0]]
 
-        stats.prediction_RMSE[ix, :] = np.sqrt(np.square(noise[selectIx, :]).mean(axis=0))
-        stats.prediction_SNR[ix, :] = calculate_SNR(signal[selectIx, :], noise[selectIx, :])
-        stats.prediction_SNRE[ix, :] = calculate_SNR(signal[selectIx, :], noiseEst[selectIx, :])
-        stats.mean[ix, :] = np.mean(signal[selectIx, :])
-        stats.sd[ix, :] = np.std(signal[selectIx, :])
-        stats.n[ix, :] = np.size(signal[selectIx, :])
-        stats.sem[ix, :] = stats.sd[ix, :] / np.sqrt(stats.n[ix, :])
+        stats.prediction_RMSE[ix] = np.sqrt(np.square(noise[selectIx]).mean())
+        stats.prediction_SNR[ix] = calculate_SNR(signal[selectIx], noise[selectIx])
+        stats.prediction_SNRE[ix] = calculate_SNR(signal[selectIx], noiseEst[selectIx])
+        stats.mean[ix] = np.mean(signal[selectIx])
+        stats.sd[ix] = np.std(signal[selectIx])
+        stats.n[ix] = np.size(signal[selectIx])
+        stats.sem[ix] = stats.sd[ix] / np.sqrt(stats.n[ix])
     # Calculate full data statistics
     stats.fullRMSE = np.sqrt((noise ** 2).mean(axis=0))
     stats.fullSNR = calculate_SNR(signal, noise)
@@ -205,11 +209,10 @@ def plot_Calibration(time_array, predictions, labels, targetAnalyte, chemIx, sta
 
     # Plot RMSE
     ax2 = plt.subplot(gs[5:7, 0:2])
-    # for chemIx in range(nChems):
-    y = stats.prediction_RMSE[:, chemIx]
-    x = stats.labels[:, chemIx]
+    y = stats.prediction_RMSE
+    x = stats.labels
     ax2.scatter(x, y, color=labColor)
-    ax2.plot(plt.xlim(), [stats.fullRMSE[chemIx], stats.fullRMSE[chemIx]], linestyle='--', markersize=1,
+    ax2.plot(plt.xlim(), [stats.fullRMSE, stats.fullRMSE], linestyle='--', markersize=1,
              color=labColor)
     plt.title('RMSE')
     plt.xlabel(muLabel)
@@ -219,10 +222,10 @@ def plot_Calibration(time_array, predictions, labels, targetAnalyte, chemIx, sta
 
     # Plot SNR
     ax3 = plt.subplot(gs[5:7, 3:5])
-    y = stats.prediction_SNR[:, chemIx]
-    x = stats.labels[:, chemIx]
+    y = stats.prediction_SNR
+    x = stats.labels
     ax3.scatter(x, y, color=labColor)
-    ax3.plot(plt.xlim(), [stats.fullSNR[chemIx], stats.fullSNR[chemIx]], linestyle='--', markersize=1, color=labColor)
+    ax3.plot(plt.xlim(), [stats.fullSNR, stats.fullSNR], linestyle='--', markersize=1, color=labColor)
     plt.title('SNR')
     plt.xlabel(muLabel)
     plt.ylabel('SNR (dB)')
@@ -239,7 +242,11 @@ def calculate_SNR(sig, noise):
     :param noise: array of noise
     :return: array, SNR calculated as 10*log10(Power_signal-Power_noise/Power_noise)
     """
+    SNR = []
     P_sig = (sig ** 2).sum(axis=0) / len(sig)  # sum square signal
-    P_noise = (noise ** 2).sum(axis=0) / len(sig)
-    SNR = 10 * np.log10((P_sig - P_noise) / P_noise)
+    P_noise = (noise ** 2).sum(axis=0) / len(noise)
+    if P_noise == 0:
+        pass
+    else:
+        SNR = np.abs(10 * np.log10(np.abs(P_sig - P_noise) / P_noise))
     return SNR
