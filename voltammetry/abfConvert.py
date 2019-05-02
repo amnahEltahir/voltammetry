@@ -70,10 +70,8 @@ def loadABF(abf_path):
     for i in range(num_files):
         abf = pyabf.ABF(abf_glob[i])
         stTime[i] = abf._headerV2.uFileStartTimeMS
-        for sweepNumber in range(abf.sweepCount):
-            abf.setSweep(sweepNumber)
-            CMD[:, sweepNumber, i] = np.asarray(abf.sweepC)
-            Voltammogram[:, sweepNumber, i] = np.asarray(abf.sweepY)
+        Voltammogram[:, :, i] = np.asarray(np.reshape(abf.data[0, :], (sweep_point_count, -1), order='F'))
+        CMD[:, :, i] = np.asarray(np.reshape(abf.data[1, :], (sweep_point_count, -1), order='F'))
     return [Voltammogram, CMD, stTime, abf_name, sampling_rate, sweep_count, sweep_point_count]
 
 
@@ -106,7 +104,6 @@ def save_ABF(abf_path, overwrite=False):
             print('Done.')
         else:
             print('Files already exist -- Not overwriting')
-
 
 #  TODO: Parse substring for saving model
 #  def parse_file_name(abfpath):
