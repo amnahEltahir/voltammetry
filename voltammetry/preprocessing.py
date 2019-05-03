@@ -153,3 +153,10 @@ def mad_outlier(data, thresh=3.5):
     MAD = robust.mad(data[np.isfinite(data)])
     exclude_index = np.where((data < data.median() - thresh * MAD) | (data > data.median() + 3.5 * MAD))
     return exclude_index
+
+
+def leave_out_concentration(training, chemIx=0, leave_out_concentration=0):
+    idx_lo = np.where(np.array(training.labels[:,0]) != leave_out_concentration)[0]
+    training.labels = training.labels[idx_lo][:]
+    training.vgrams = training.vgrams[idx_lo][:]
+    return training
