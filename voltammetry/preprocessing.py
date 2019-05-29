@@ -6,6 +6,7 @@ from recordclass import recordclass
 from statsmodels import robust
 
 
+
 class PreprocessedData:
     def __init__(self, voltammogram_data, muLabels, window_size=1500, trainingSampleSize=500):
         print("Finding stable section with window size", window_size)
@@ -156,7 +157,8 @@ def mad_outlier(data, thresh=3.5):
 
 
 def leave_out_concentration(training, chemIx=0, leave_out_concentration=0):
-    idx_lo = np.where(np.array(training.labels[:,0]) != leave_out_concentration)[0]
+    idx_lo = np.not_equal(np.array(training.labels[:, chemIx], dtype=float),
+                          np.asarray(leave_out_concentration, dtype=float)).nonzero()[0]
     training.labels = training.labels[idx_lo][:]
     training.vgrams = training.vgrams[idx_lo][:]
     return training

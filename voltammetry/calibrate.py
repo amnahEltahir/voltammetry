@@ -10,7 +10,7 @@ from glmnet_python import cvglmnet, cvglmnetPredict
 
 
 def best_alpha(training, nAlphas=11, family='mgaussian', ptype='mse', nfolds=10, parallel=True, keep=False,
-               grouped=True, random_seed=0, fnY=lambda x: np.diff(x)):
+               grouped=True, random_seed=0, fnY=lambda x: np.diff(x), foldid=np.empty(0)):
     """
     Find best alpha based on minimum cross-validated error.
     :param training: voltammogram data structure
@@ -34,7 +34,8 @@ def best_alpha(training, nAlphas=11, family='mgaussian', ptype='mse', nfolds=10,
         X = fnY(training.vgrams).astype(float)
         Y = np.array(training.labels).astype(float)
         rand.seed(random_seed)
-        foldid = scipy.random.choice(nfolds, training.vgrams.shape[0], replace=True)
+        if not foldid.any():
+            foldid = scipy.random.choice(nfolds, training.vgrams.shape[0], replace=True)
         cvFitList[i] = cvglmnet(x=X, y=Y, family=family, alpha=alpha, ptype=ptype, nfolds=nfolds, foldid=foldid,
                                 parallel=parallel, keep=keep, grouped=grouped)
     elapsed = time.time() - t
@@ -54,7 +55,7 @@ def best_alpha(training, nAlphas=11, family='mgaussian', ptype='mse', nfolds=10,
 
 
 def train_analyte(training, family='mgaussian', alpha=1, ptype='mse', nfolds=10, parallel=True, keep=False,
-                  grouped=True, random_seed=0, fnY=lambda x: np.diff(x)):
+                  grouped=True, random_seed=0, fnY=lambda x: np.diff(x), foldid=np.empty(0)):
     """
     Cross validation training to generate elastic net model.
     :param training: Voltamogram_data structure with training data 
@@ -70,7 +71,8 @@ def train_analyte(training, family='mgaussian', alpha=1, ptype='mse', nfolds=10,
     :return: cvFit: cvfit object, model based on training data
     """
     rand.seed(random_seed)
-    foldid = scipy.random.choice(nfolds, training.vgrams.shape[0], replace=True)
+    if not foldid.any():
+        foldid = scipy.random.choice(nfolds, training.vgrams.shape[0], replace=True)
     x = fnY(training.vgrams).astype(float)
     y = np.array(training.labels).astype(float)
     [r, c] = y.shape  # GLMnet has issue with 1 vector  labels, add vector of zeros
