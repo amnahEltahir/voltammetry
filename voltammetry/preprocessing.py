@@ -144,7 +144,7 @@ def flatten_data(training, testing):
     return [training, testing]
 
 
-def mad_outlier(data, thresh=3.5):
+def mad_outlier(data, thresh=3):
     """
     Use Median Absolute Deviation method, default in MATLAB
     :param data: array of voltammetry data
@@ -152,7 +152,7 @@ def mad_outlier(data, thresh=3.5):
     :return: exclude_index: indices of outliers
     """
     MAD = robust.mad(data[np.isfinite(data)])
-    exclude_index = np.where((data < data.median() - thresh * MAD) | (data > data.median() + 3.5 * MAD))
+    exclude_index = np.where((data < data.median() - thresh * MAD) | (data > data.median() + thresh * MAD))
     return exclude_index
 
 

@@ -97,7 +97,7 @@ def test_analyte(testing, cvFit, fnY=lambda x: np.diff(x), s='lambda_min'):
     """
     xx = fnY(testing.vgrams)
     yy = cvglmnetPredict(cvFit, xx, s)
-    #if yy.ndim == 3:
+    # if yy.ndim == 3:
     #    yy = np.squeeze(yy,axis=2)
     return yy
 
@@ -171,6 +171,7 @@ def plot_Calibration(time_array, predictions, labels, targetAnalyte, chemIx, sta
     X = time_array
     Y = predictions
     L = np.array(labels)
+    L[np.where(np.diff(L[:,chemIx]))] = np.nan
     chemLabel = targetAnalyte[chemIx]
     labColor = 'k'
     units = ''
@@ -203,9 +204,9 @@ def plot_Calibration(time_array, predictions, labels, targetAnalyte, chemIx, sta
     plt.title(chemLabel)
     plt.xlabel('Time (s)')
     plt.ylabel(muLabel)
-
     # Plot actual concentrations
-    hAct = plt.scatter(X, L[:, chemIx], color='k', marker='.', linewidth=0.5)
+    # hAct = plt.scatter(X, L[:, chemIx], color='k', marker='.', linewidth=0.5)
+    hAct, = ax1.plot(X, L[:, chemIx], color='k', linewidth=3.0)
     ax1.legend((hPred, hAct), ('predicted', 'actual'))
     plt.axis('tight')
 

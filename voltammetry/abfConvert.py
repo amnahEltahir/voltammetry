@@ -4,6 +4,7 @@ import pyabf
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cmx
+import h5py
 import matplotlib as mpl
 import shutil
 from numpy.core.multiarray import ndarray
@@ -15,13 +16,13 @@ class Data:
     Experimental data taken from directory of abf files.
     """
 
-    def __init__(self, abf_path):
+    def __init__(self, data_path):
         """
         Define class and class functions
-        :param abf_path: path containing abf files
+        :param data_path: path containing abf files
         """
         [self.Voltammogram, self.CMD, self.stTime, self.name, self.samplingRate, self.sweep_count,
-         self.sweep_point_count] = loadABF(abf_path)
+         self.sweep_point_count] = loadData(data_path)
 
     def _plotVoltammograms(self, CMAP=cmx.jet, fnY=lambda x: x):
         """
@@ -39,7 +40,7 @@ class Data:
             mid = int(np.ceil(Rn / 2))
             y = np.transpose(fnY(vgrams[:, mid]))
             x = 1000 * np.array(range(self.sweep_point_count))/self.samplingRate
-            plt.plot(x, y, color=vgram_colors[i-1])
+            plt.plot(x[0:len(y)], y, color=vgram_colors[i-1])
         plt.title(self.name)
         plt.xlabel('Time (ms)')
         plt.ylabel('current (nA)')
@@ -54,9 +55,9 @@ class Data:
 
 
 # noinspection PyProtectedMember
-def loadABF(abf_path):
+def abf2H5(abf_path):
     """
-    Loads in abf file data from directory
+    Convert ABF to H5
     :param abf_path: string, abf directory path
     :return: Voltammogram: list, Voltammetry data from directory
     :return: CMD: list, forcing function from abf data
@@ -65,22 +66,64 @@ def loadABF(abf_path):
     :return: sampling_rate: integer, number of samples per second
     """
     abf_name = os.path.basename(abf_path)
+    if abf_name == '':
+        abf_name = os.path.basename(os.path.split(abf_path)[0])
+    out_dir = os.path.split(abf_path)[0]
+
     # Combine data from abf files in given path
     abf_glob = sorted(glob.glob(abf_path + "/*.abf"))  # collection of files in directory
     num_files = len(abf_glob)  # number of abf files in directory
     abf_0 = pyabf.ABF(abf_glob[0])
     sweep_count = abf_0.sweepCount  # Number of sweeps (max 10000)
     sweep_point_count = abf_0.sweepPointCount  # Number of points in sweep (97 Hz = 1032)
-    sampling_rate = abf_0.dataRate
-    Voltammogram = np.empty((sweep_point_count, sweep_count, num_files))
-    CMD = np.empty((sweep_point_count, sweep_count, num_files))
-    stTime = np.empty(num_files)
+    Voltammogram = np.empty((sweep_point_count, sweep_count))
+    CMD = np.empty((sweep_point_count, sweep_count))
     for i in range(num_files):
         abf = pyabf.ABF(abf_glob[i])
-        stTime[i] = abf._headerV2.uFileStartTimeMS
-        Voltammogram[:, :, i] = np.asarray(np.reshape(abf.data[0, :], (sweep_point_count, -1), order='F'))
-        CMD[:, :, i] = np.asarray(np.reshape(abf.data[1, :], (sweep_point_count, -1), order='F'))
-    return [Voltammogram, CMD, stTime, abf_name, sampling_rate, sweep_count, sweep_point_count]
+        abf_file_name = os.path.splitext(os.path.basename(abf.abfFilePath))[0]
+        stTime = abf._headerV2.uFileStartTimeMS
+        Voltammogram[:, :] = np.asarray(np.reshape(abf.data[0, :], (sweep_point_count, -1), order='F'))
+        CMD[:, :] = np.asarray(np.reshape(abf.data[1, :], (sweep_point_count, -1), order='F'))
+        with h5py.File(os.path.join(out_dir, abf_file_name + '.h5'), 'w') as f:
+            dset_vgram = f.create_dataset("Voltammogram", data=Voltammogram)
+            dset_cmd = f.create_dataset("CMD", data=CMD)
+            f.attrs["stTimeMS"] = stTime
+            f.attrs['samplingRate'] = abf.dataRate
+            f.attrs['sweepCount'] = abf.sweepCount
+            f.attrs['sweepPointCount'] = abf.sweepPointCount
+            f.attrs['expName'] = abf_name
+
+
+def loadData(h5_path):
+    """
+    :param h5_path: string, h5 data directory path
+    :return: Voltammogram: list, Voltammetry data from directory
+    :return: CMD: list, forcing function from abf data
+    :return: stTime: array, start time of each file
+    :return: abf_name: string with base name of directory
+    :return: sampling_rate: integer, number of samples per second
+    """
+    h5_name = os.path.basename(h5_path)
+    # combine data from hdf5 files in given path
+    h5_glob = sorted(glob.glob(h5_path + "/*.h5")) # collection of files in directory
+    if not h5_glob:
+        print('No h5 files found.')
+        pass
+    else:
+        num_files = len(h5_glob) # number of files in directory
+        h5_0 = h5py.File(h5_glob[0], 'r')
+        sweep_count = h5_0.attrs['sweepCount']
+        sweep_point_count = h5_0.attrs['sweepPointCount']
+        sampling_rate = h5_0.attrs['samplingRate']
+        Voltammogram = np.empty((sweep_point_count, sweep_count, num_files))
+        CMD = np.empty((sweep_point_count, sweep_count, num_files))
+        stTime = np.empty(num_files)
+        for i in range(num_files):
+            h5 = h5py.File(h5_glob[i], 'r')
+            stTime = h5.attrs['stTimeMS']
+            Voltammogram[:, :, i] = h5['Voltammogram']
+            CMD[:, :, i] = h5['CMD']
+    return[Voltammogram, CMD, stTime, h5_name, sampling_rate, sweep_count, sweep_point_count]
 
 # def save_ABF(abf_path, overwrite=False):
 #     """
