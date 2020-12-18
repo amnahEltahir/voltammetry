@@ -7,10 +7,11 @@ import scipy.io
 import random as rand
 import time
 from glmnet_python import cvglmnet, cvglmnetPredict
+from joblib import Parallel, delayed
 
 
 def best_alpha(training, nAlphas=11, family='mgaussian', ptype='mse', nfolds=10, parallel=True, keep=False,
-               grouped=True, random_seed=0, fnY=lambda x: np.diff(x), foldid=np.empty(0)):
+               grouped=True, random_seed=0, fnY=lambda x: np.diff(x), foldid=np.empty(0), standardize_resp=True):
     """
     Find best alpha based on minimum cross-validated error.
     :param training: voltammogram data structure
@@ -55,7 +56,7 @@ def best_alpha(training, nAlphas=11, family='mgaussian', ptype='mse', nfolds=10,
 
 
 def train_analyte(training, family='mgaussian', alpha=1, ptype='mse', nfolds=10, parallel=True, keep=False,
-                  grouped=True, random_seed=0, fnY=lambda x: np.diff(x), foldid=np.empty(0)):
+                  grouped=True, random_seed=0, fnY=lambda x: np.diff(x), foldid=np.empty(0), standardize_resp=True):
     """
     Cross validation training to generate elastic net model.
     :param training: Voltamogram_data structure with training data 
@@ -111,6 +112,7 @@ def calcStepStats(chemIx, predictions, labels):
     :return: stats: stats structure, statistics calculated on predictions
     """
     muList = np.unique(labels[:, chemIx])
+    muList = muList[~np.isnan(muList)]
     nSteps = muList.size
     # Initialize stats structure
     stats = recordclass('stats', 'labels, prediction_RMSE, prediction_SNR, prediction_SNRE, mean, sd, n, sem')
@@ -141,7 +143,6 @@ def calcStepStats(chemIx, predictions, labels):
         estimate[selectIx] = np.tile(signal[selectIx].mean(), (stepSize))
         noiseEst[selectIx] = signal[selectIx] - estimate[selectIx]
         stats.labels[ix] = truth[selectIx[0]]
-
         stats.prediction_RMSE[ix] = np.sqrt(np.square(noise[selectIx]).mean())
         stats.prediction_SNR[ix] = calculate_SNR(signal[selectIx], noise[selectIx])
         stats.prediction_SNRE[ix] = calculate_SNR(signal[selectIx], noiseEst[selectIx])
@@ -168,9 +169,10 @@ def plot_Calibration(time_array, predictions, labels, targetAnalyte, chemIx, sta
     :param stats: stats structure, structure of calculated statistics for variable
     :return: fig: handle for figure of results
     """
-    X = time_array
-    Y = predictions
-    L = np.array(labels)
+    #X = time_array
+    X = np.arange(len(predictions))
+    Y = np.array(predictions)/1000
+    L = np.array(labels)/1000
     L[np.where(np.diff(L[:,chemIx]))] = np.nan
     chemLabel = targetAnalyte[chemIx]
     labColor = 'k'
@@ -199,25 +201,27 @@ def plot_Calibration(time_array, predictions, labels, targetAnalyte, chemIx, sta
     muLabel = ''.join([chemLabel, units])
     gs = GridSpec(7, 5)
     # Plot Predictions
-    ax1 = plt.subplot(gs[1:4, :])
+    ax1 = plt.subplot(gs[1:4, 0:4])
     hPred = plt.scatter(X, Y[:, chemIx], marker='.', color=labColor)
-    plt.title(chemLabel)
-    plt.xlabel('Time (s)')
+    #plt.title(chemLabel)
+    #plt.xlabel('Time (s)')
+    plt.xlabel('sweep')
     plt.ylabel(muLabel)
     # Plot actual concentrations
     # hAct = plt.scatter(X, L[:, chemIx], color='k', marker='.', linewidth=0.5)
-    hAct, = ax1.plot(X, L[:, chemIx], color='k', linewidth=3.0)
-    ax1.legend((hPred, hAct), ('predicted', 'actual'))
+    hAct, = ax1.plot(X, L[:, chemIx], color='k', linewidth=2.0)
+    ax1.legend((hPred, hAct), ('prediction', 'known value'))
     plt.axis('tight')
 
     # Plot RMSE
     ax2 = plt.subplot(gs[5:7, 0:2])
-    y = stats.prediction_RMSE
-    x = stats.labels
+    y = stats.prediction_RMSE/1000
+    x = stats.labels/1000
     ax2.scatter(x, y, color=labColor)
-    ax2.plot(plt.xlim(), [stats.fullRMSE, stats.fullRMSE], linestyle='--', markersize=1,
+    ax2.plot(plt.xlim(), [stats.fullRMSE/1000, stats.fullRMSE/1000], linestyle='--', markersize=1,
              color=labColor)
     plt.title('RMSE')
+    plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
     plt.xlabel(muLabel)
     plt.ylabel(''.join(['RMSE', units]))
     plt.grid()
@@ -226,7 +230,7 @@ def plot_Calibration(time_array, predictions, labels, targetAnalyte, chemIx, sta
     # Plot SNR
     ax3 = plt.subplot(gs[5:7, 3:5])
     y = stats.prediction_SNR
-    x = stats.labels
+    x = stats.labels/1000
     ax3.scatter(x, y, color=labColor)
     ax3.plot(plt.xlim(), [stats.fullSNR, stats.fullSNR], linestyle='--', markersize=1, color=labColor)
     plt.title('SNR')
@@ -235,7 +239,7 @@ def plot_Calibration(time_array, predictions, labels, targetAnalyte, chemIx, sta
     plt.grid()
     plt.axis('tight')
 
-    return fig
+    return fig, ax1, ax2, ax3
 
 
 def calculate_SNR(sig, noise):
@@ -245,7 +249,7 @@ def calculate_SNR(sig, noise):
     :param noise: array of noise
     :return: array, SNR calculated as 10*log10(Power_signal-Power_noise/Power_noise)
     """
-    SNR = []
+    SNR = np.nan# default SNR value
     P_sig = (sig ** 2).sum(axis=0) / len(sig)  # sum square signal
     P_noise = (noise ** 2).sum(axis=0) / len(noise)
     if P_noise == 0:

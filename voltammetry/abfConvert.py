@@ -108,7 +108,7 @@ def loadData(h5_path):
     h5_glob = sorted(glob.glob(h5_path + "/*.h5")) # collection of files in directory
     if not h5_glob:
         print('No h5 files found.')
-        pass
+        exit(1)
     else:
         num_files = len(h5_glob) # number of files in directory
         h5_0 = h5py.File(h5_glob[0], 'r')

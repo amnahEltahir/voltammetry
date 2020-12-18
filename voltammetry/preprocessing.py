@@ -8,7 +8,13 @@ from statsmodels import robust
 
 
 class PreprocessedData:
-    def __init__(self, voltammogram_data, muLabels, window_size=1500, trainingSampleSize=500):
+    def __init__(self, voltammogram_data, muLabels, window_size=1500, trainingSampleSize=500,corr_over=False):
+        if corr_over:
+            print("Correcting overflow negative values")
+            voltammogram_data = correct_overflow(Voltammogram=voltammogram_data)
+            print('Start partition')
+        else:
+            print('Start partition')
         print("Finding stable section with window size", window_size)
         [good_window, exclude_ix] = find_stable_section(voltammogram_data, window_size)
         print("Partitioning data with training sample size", trainingSampleSize)
@@ -17,6 +23,21 @@ class PreprocessedData:
         print("Flattening Data")
         [self.training, self.testing] = flatten_data(training_part, testing_part)
         print("PRE-PROCESSING COMPLETE!!!!")
+
+
+def correct_overflow(Voltammogram):
+    sample_wise=0
+    sweep_wise=1
+    exp_wise = 2
+    #print(np.shape(Voltammogram))
+    for experiment in range(np.shape(Voltammogram)[exp_wise]):
+        #print('experiment',experiment)
+        for ix in range(np.shape(Voltammogram[:,:,experiment])[sweep_wise]):
+            #print('sweep',ix)
+            for elem in range(0, np.shape(Voltammogram[:,ix,experiment])[0] - 1):
+                if np.diff(Voltammogram[:,ix,experiment])[elem] < -3000:
+                    Voltammogram[elem + 1,ix,experiment] = -Voltammogram[elem + 1,ix,experiment]
+    return Voltammogram
 
 
 def find_stable_section(Voltammogram, window_size=150):
