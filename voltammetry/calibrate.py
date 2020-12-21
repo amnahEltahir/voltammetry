@@ -201,7 +201,7 @@ def plot_Calibration(time_array, predictions, labels, targetAnalyte, chemIx, sta
     muLabel = ''.join([chemLabel, units])
     gs = GridSpec(7, 5)
     # Plot Predictions
-    ax1 = plt.subplot(gs[1:4, 0:4])
+    ax1 = plt.subplot(gs[1:4, 0:5])
     hPred = plt.scatter(X, Y[:, chemIx], marker='.', color=labColor)
     #plt.title(chemLabel)
     #plt.xlabel('Time (s)')
@@ -237,7 +237,6 @@ def plot_Calibration(time_array, predictions, labels, targetAnalyte, chemIx, sta
     plt.xlabel(muLabel)
     plt.ylabel('SNR (dB)')
     plt.grid()
-    plt.axis('tight')
 
     return fig, ax1, ax2, ax3
 

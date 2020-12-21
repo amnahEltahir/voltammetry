@@ -1,9 +1,7 @@
 .DS_Store
 .idea/
 OUT/
-OUUUT/
-junk/
-voltammetry/__init__.pyc
 voltammetry/__pycache__/
-voltammetry/voltammetry.egg-info/
-voltammetry/dist
+*/*/*.h5
+*/*/*csv
+*/*.h5
