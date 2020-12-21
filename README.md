@@ -23,6 +23,15 @@ The error and solution are outlined here: https://github.com/bbalasub1/glmnet_py
 
 ## Further reading:
 
-### GLMnet:
+### Elastic net:
+<ul>
+<li>Elastic Net: http://www.jstatsoft.org/v33/i01/</li>
+<li>GLMnet for python: https://web.stanford.edu/~hastie/glmnet_python/</li>
+</ul>
 
-### Older human voltammetry work:
+### Previous human voltammetry work:
+<ul>
+<li>Kishida et al. (2016): https://doi.org/10.1073/pnas.1513619112</li>
+<li>Moran et al. (2019): https://doi.org/10.1038/npp.2017.304</li>
+<li>Bang et al. (2020): https://doi.org/10.1016/j.neuron.2020.09.015</li>
+</ul>
