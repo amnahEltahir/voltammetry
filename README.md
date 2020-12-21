@@ -2,7 +2,7 @@
 This repository contains code and demos related to the work "Low Amplitude Burst Sensing (LABS) of Neurotransmitters" (in preparation).
 
 ## Setting up environment
-The analyses outlined in this repository using Python 3.7. Necessary packages are in the file 
+The analyses outlined in this repository using Python 3.7. Necessary packages to install are in <code>requirements.txt</code>
 
 Installing virtual environments using pip: https://uoa-eresearch.github.io/eresearch-cookbook/recipe/2014/11/26/python-virtual-env/
 
