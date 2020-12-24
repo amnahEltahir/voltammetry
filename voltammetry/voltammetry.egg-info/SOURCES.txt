@@ -1,0 +1,5 @@
+setup.py
+voltammetry.egg-info/PKG-INFO
+voltammetry.egg-info/SOURCES.txt
+voltammetry.egg-info/dependency_links.txt
+voltammetry.egg-info/top_level.txt
